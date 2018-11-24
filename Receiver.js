@@ -1,8 +1,12 @@
 // Node-module imports ---------------------------------------------------------
-//var Promise = require('bluebird');
-var portfinder = require('portfinder');
 var mosca = require('mosca');
+var twilio = require('twilio');
+var config = require('./config.js')
 // Global Variables ------------------------------------------------------------
+var twilioSID;
+var twilioAT;
+var twilioPhoneNumber;
+var userPhoneNumber;
 var broker;                                        // Variable to store mosca broker
 var g_port = 1927;                                 // Port to access mosca broker
 // Call to main() --------------------------------------------------------------
@@ -13,19 +17,30 @@ function main(){
 }
 // Create Mosca Broker ---------------------------------------------------------
 function createMosca(){
+
   console.log("Creating listener on port 1927...")
   broker = new mosca.Server({port: g_port});
-  broker.on('ready', () => {console.log("Listner is ready on port 1927")})
+  broker.on('ready', () => {console.log("Listener is ready on port 1927")})
   broker.on('connect', (client) => {console.log(client + "has connected")})
   broker.on('published', function(packet, client) {
     var payload = packet.payload.toString();
     if (packet.topic == 'Coffee/Temperature'){
       if ("60" < payload)
-        console.log("Your coffee is " + payload + "°C, it is too hot to serve right now, just wait a bit.");
-      else if ("55" <= payload && payload <= "60")
-        console.log("Your coffee is " + payload + "°C, it is the optimal time to serve!")
+        console.log("\x1b[1m\x1b[31m%s\x1b[0m", "Your coffee is " + payload + "°C, it is too hot to serve right now, just wait a bit.");
+      else if ("55" <= payload && payload <= "60"){
+        console.log("\x1b[1m\x1b[32m%s\x1b[0m", "Your coffee is " + payload + "°C, it is the optimal time to serve!")
+        sendText(payload);
+      }
       else if (payload < "55")
-        console.log("Your coffee is " + payload + "°C, it is too cold to serve, you will have to reheat it.")
+        console.log("\x1b[1m\x1b[36m%s\x1b[0m", "Your coffee is " + payload + "°C, it is too cold to serve, you will have to reheat it.")
     }
   })
+}
+function sendText(payload){
+  var client = new twilio(config.sid, config.at);
+  client.messages.create({
+    to: config.upn,
+    from: config.tpn,
+    body: ("From RohitPleaseDrinkYourCoffee, Your coffee is " + payload + "°C, it is the optimal time to serve!")
+  });
 }
