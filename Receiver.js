@@ -59,7 +59,7 @@ function extrapolate(data){
     time = time + delT;
     dataArray.push({datapoint: i+1, y: data[i].temp, x: time})
   }
-  console.log(dataArray)
+  //console.log(dataArray)
 }
 
 function sendText(payload){
