@@ -10,9 +10,10 @@ var userPhoneNumber;                              // Number to send texts to
 var broker;                                       // Variable to store mosca broker
 var g_port = 1927;                                // Port to access mosca broker
 var count = 0;                                    // Count to extrapolate when coffee is ready
-var seconds;
-var dataSet = [];
-var lastPayload;
+var seconds;                                      // Used for extrapolation
+var dataSet = [];                                 // Used for extrapolation
+var lastPayload;                                  // Used for extrapolation
+var acidityString = "We couldn't find your coffee's pH level. Are you using a pH probe?";
 // Call to main() --------------------------------------------------------------
 main()
 // Main function ---------------------------------------------------------------
@@ -28,6 +29,16 @@ function createMosca(){
   broker.on('clientConnected', (client) => {console.log(client.id + " has connected")})
   broker.on('published', function(packet, client) {
     var payload = packet.payload.toString();
+    if (packet.topic == 'Coffee/pH'){
+      pHLevel = parseFloat(payload);
+      if (5 < pHLevel)
+        acidityString = "Your coffee's pH level is " + pHLevel + ", this is pretty basic, maybe add more grounds next time."
+      if (4.5 <= pHLevel && pHLevel <= 5)
+        acidityString = "Your coffee's pH level is " + pHLevel + ", this is actually ideal, maybe apply for a job at Starbucks?"
+      if (pHLevel < 4.5)
+        acidityString = "Your coffee's pH level is " + pHLevel + ", this is pretty acidic, maybe add less grounds next time."
+    }
+
     if (packet.topic == 'Coffee/Temperature'){
       if ("60" < payload){
         console.log("\x1b[1m\x1b[31m%s\x1b[0m", "Your coffee is " + payload + "°C, it is too hot to serve right now, just wait a bit.");
@@ -67,6 +78,6 @@ function sendText(payload){
   client.messages.create({
     to: config.upn,
     from: config.tpn,
-    body: ("RohitPleaseDrinkYourCoffee, it's " + payload + "°C,now is the optimal time to serve!")
+    body: ("From RohitPleaseDrinkYourCoffee,\n\nYour coffee is " + payload + "°C, now's the time to serve!\n\n" + acidityString)
   });
 }
