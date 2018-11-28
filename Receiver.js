@@ -14,6 +14,7 @@ var seconds;                                      // Used for extrapolation
 var dataSet = [];                                 // Used for extrapolation
 var lastPayload;                                  // Used for extrapolation
 var acidityString = "We couldn't find your coffee's pH level. Are you using a pH probe?";
+var alertSent = false;
 // Call to main() --------------------------------------------------------------
 main()
 // Main function ---------------------------------------------------------------
@@ -22,15 +23,14 @@ function main(){
 }
 // Create Mosca Broker ---------------------------------------------------------
 function createMosca(){
-
   console.log("Creating listener on port 1927...")
   broker = new mosca.Server({port: g_port});
   broker.on('ready', () => {console.log("Listener is ready on port 1927")})
   broker.on('clientConnected', (client) => {console.log(client.id + " has connected")})
   broker.on('published', function(packet, client) {
-    var payload = packet.payload.toString();
+    var payload = parseFloat(packet.payload.toString());
     if (packet.topic == 'Coffee/pH'){
-      pHLevel = parseFloat(payload);
+      pHLevel = (payload);
       if (5 < pHLevel)
         acidityString = "Your coffee's pH level is " + pHLevel + ", this is pretty basic, maybe add more grounds next time."
       if (4.5 <= pHLevel && pHLevel <= 5)
@@ -40,7 +40,7 @@ function createMosca(){
     }
 
     if (packet.topic == 'Coffee/Temperature'){
-      if ("60" < payload){
+      if (60 < payload){
         console.log("\x1b[1m\x1b[31m%s\x1b[0m", "Your coffee is " + payload + "°C, it is too hot to serve right now, just wait a bit.");
         if (count < 10 && (lastPayload != payload)){
           seconds = (new Date()).getTime()
@@ -53,11 +53,13 @@ function createMosca(){
         }
       lastPayload = payload
       }
-      else if ("55" <= payload && payload <= "60"){
+      else if (55 <= payload && payload <= 60){
         console.log("\x1b[1m\x1b[32m%s\x1b[0m", "Your coffee is " + payload + "°C, it is the optimal time to serve!")
-        sendText(payload);
+        if (!alertSent){
+          sendText(payload);
+        }
       }
-      else if (payload < "55")
+      else if (payload < 55)
         console.log("\x1b[1m\x1b[36m%s\x1b[0m", "Your coffee is " + payload + "°C, it is too cold to serve, you will have to reheat it.")
     }
   })
@@ -71,6 +73,12 @@ function extrapolate(data){
     dataArray.push({datapoint: i+1, y: data[i].temp, x: time})
   }
   //console.log(dataArray)
+  var b = dataArray[0].y;
+  var m = (dataArray[9].y - dataArray[0].y) / (dataArray[9].x - dataArray[0].x)
+  var estimateMilliseconds = (60 - b) / m;
+  var estimateSeconds = estimateMilliseconds/1000
+  var estimate = (estimateSeconds / 60).toFixed(1)
+  sendStartText(estimate)
 }
 
 function sendText(payload){
@@ -78,6 +86,16 @@ function sendText(payload){
   client.messages.create({
     to: config.upn,
     from: config.tpn,
-    body: ("From RohitPleaseDrinkYourCoffee,\n\nYour coffee is " + payload + "°C, now's the time to serve!\n\n" + acidityString)
+    body: ("RohitPleaseDrinkYourCoffee,\n\nYour coffee is " + (payload) + "°C, now's the time to serve!\n\n" + acidityString)
+  });
+  alertSent = true;
+}
+
+function sendStartText(payload){
+  var client = new twilio(config.sid, config.at);
+  client.messages.create({
+    to: config.upn,
+    from: config.tpn,
+    body: ("RohitPleaseDrinkYourCoffee,\n\nHey, I see your whipping up a mean brew! It should be ready in " + (payload) + " minutes, but I'll still let you know when to serve")
   });
 }
