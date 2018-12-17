@@ -78,6 +78,7 @@ function extrapolate(data){
   var estimateMilliseconds = (60 - b) / m;
   var estimateSeconds = estimateMilliseconds/1000
   var estimate = (estimateSeconds / 60).toFixed(1)
+  var total = 0;
   sendStartText(estimate)
 }
 
